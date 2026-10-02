@@ -1,0 +1,2692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mi Cancionero · Alabanzas</title>
+
+    <!-- ===== PWA: instalar como app en el celular/tablet/PC ===== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e2a3a">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cancionero">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <style>
+        /* ===== RESET Y VARIABLES ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1e2a3a;
+            --accent: #DC143C;
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --radius: 10px;
+            --font-mono: 'Courier New', Courier, monospace;
+            --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: #1e1e1e;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-container { display: flex; flex: 1; overflow: hidden; }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 340px;
+            background: var(--card);
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 2;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-header {
+            padding: 16px 18px;
+            background: var(--primary);
+            color: #fff;
+        }
+        .sidebar-header h2 { font-size: 1.2rem; margin-bottom: 10px; }
+        .sidebar-header .search-box {
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            outline: none;
+        }
+        .sidebar-header .search-box::placeholder { color: rgba(255,255,255,0.6); }
+        .sidebar-header .search-box:focus { background: rgba(255,255,255,0.25); }
+        .backup-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .backup-row button, .backup-row .backup-import-btn {
+            flex: 1;
+            min-width: 0;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 6px;
+            padding: 6px 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .backup-row button:hover, .backup-row .backup-import-btn:hover { background: rgba(255,255,255,0.22); }
+
+        .tab-bar {
+            display: flex;
+            background: #e9ecef;
+            border-bottom: 1px solid #d0d7dd;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #555;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            background: #fff;
+            border-bottom-color: var(--accent);
+            color: var(--primary);
+        }
+
+        .song-list-container { flex: 1; overflow-y: auto; }
+        .song-list { list-style: none; padding: 0; }
+        .song-item {
+            padding: 12px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+        .song-item:hover { background: #f8f9fa; }
+        .song-item.active { background: #e3f0fa; border-left: 4px solid #2196f3; }
+        .song-item .setlist-badge {
+            background: var(--accent);
+            color: #fff;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        /* ===== PORTADA ALFABÉTICA (Repertorio) ===== */
+        .letter-cover { padding: 16px 14px 8px; cursor: default; }
+        .letter-see-all {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 14px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .letter-see-all:hover { opacity: 0.9; }
+        .letter-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+        .letter-btn {
+            aspect-ratio: 1;
+            border: 1px solid #ddd;
+            background: #fafafa;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            cursor: pointer;
+        }
+        .letter-btn:hover:not(.disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .letter-btn.disabled { color: #ccc; background: #f5f5f5; cursor: not-allowed; }
+        .back-to-letters {
+            background: #f4f6f9;
+            font-weight: 600;
+            color: var(--accent);
+            justify-content: flex-start;
+        }
+        .back-to-letters:hover { background: #eceff3; }
+
+        .setlist-panel {
+            padding: 12px 16px;
+            background: #fff3cd;
+            border-top: 1px solid #ffe082;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .setlist-panel .count { font-weight: 700; color: #856404; }
+        .setlist-panel .actions button {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+        }
+        .song-viewer {
+            background: var(--card);
+            padding: 30px 35px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .song-viewer .placeholder {
+            text-align: center;
+            color: #aaa;
+            margin: auto;
+            padding: 40px 0;
+        }
+        .song-viewer .placeholder h2 { font-weight: 400; margin-bottom: 15px; }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .toolbar .btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .toolbar .btn:hover { opacity: 0.85; }
+        .toolbar .btn-accent { background: var(--accent); }
+        .toolbar .btn-outline { background: transparent; border: 1px solid #ccc; color: #333; }
+        .toolbar .btn-danger { background: #c0392b; color: #fff; }
+
+        .song-title { font-size: 1.8rem; margin: 0 0 6px 0; font-weight: 700; }
+        .song-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .song-meta select {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .chord-lyrics {
+            font-family: var(--font-mono);
+            font-size: 20px;
+            line-height: 2;
+            white-space: pre-wrap;
+            background: #fcfcfc;
+            padding: 20px 24px;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 65vh;
+            color: #000;
+        }
+        .chord-lyrics .chord { color: var(--accent); font-weight: 700; }
+
+        /* ===== MODO EDICIÓN (avanzado / texto crudo) ===== */
+        .edit-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .edit-area textarea {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            line-height: 1.8;
+            padding: 16px;
+            border: 2px solid var(--accent);
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 300px;
+            white-space: pre;
+            background: #fffbfb;
+        }
+        .edit-area .edit-actions { display: flex; gap: 10px; }
+
+        /* ===== TUTOR ===== */
+        .tutor-panel {
+            display: none;
+            flex-direction: column;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px 24px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+        .tutor-panel.active { display: flex; }
+        .tutor-panel .tutor-search { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tutor-panel .tutor-search input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .tutor-panel .tutor-search button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .tutor-panel .tutor-result {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent);
+            white-space: pre-wrap;
+            line-height: 1.6;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 55vh;
+        }
+        .tutor-panel .tutor-result .q { font-weight: 700; color: var(--primary); }
+        .tutor-panel .tutor-result .a { margin-top: 8px; }
+        .tutor-panel .tutor-import {
+            margin-top: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 12px;
+        }
+        .tutor-panel .tutor-import textarea {
+            width: 100%;
+            height: 100px;
+            padding: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .tutor-panel .tutor-import button {
+            margin-top: 6px;
+            padding: 6px 18px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* ===== MODO INTÉRPRETE (antes "reproductor móvil") =====
+           Ahora funciona en cualquier tamaño de pantalla: celular, tablet,
+           laptop o PC. Ya no es "una canción a la vez" — muestra TODAS las
+           canciones del setlist en una sola columna de scroll vertical
+           continuo, para poder ir bajando mientras tocas sin tener que
+           tocar "siguiente" cada vez. */
+        .interpreter-view {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 1000;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .interpreter-view.active { display: flex; }
+        .interpreter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+            background: var(--primary);
+            color: #fff;
+        }
+        .interpreter-header .title {
+            font-size: 1rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .interpreter-header .controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .interpreter-header .controls button {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px 9px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .interpreter-header .controls button:hover { background: rgba(255,255,255,0.28); }
+        .interpreter-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0 40px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .interpreter-empty {
+            margin: auto;
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+        }
+        .interpreter-song {
+            max-width: 900px;
+            margin: 0 auto 10px;
+            padding: 0 8px 10px;
+            border-bottom: 1px dashed #ddd;
+        }
+        .interpreter-song:last-child { border-bottom: none; }
+        .interpreter-song-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+            padding: 4px 0;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 5;
+        }
+        .interpreter-song-header h2 {
+            font-size: 1rem;
+            color: var(--primary);
+        }
+        .interpreter-song-header select {
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+        /* Letra compacta: interlineado apretado y sin saltos de renglón
+           (así los acordes siguen exactamente sobre su sílaba). El tamaño
+           lo calcula la app para que la línea más larga quepa en pantalla. */
+        .interpreter-body {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.25;
+            white-space: pre;
+            overflow-x: auto;
+            color: #000;
+        }
+        .interpreter-body .chord { color: var(--accent); font-weight: 700; }
+        @media (max-width: 600px) {
+            .interpreter-header .title .t-long { display: none; }
+        }
+
+        /* ===== SETLIST DRAWER (lista lateral del modo intérprete, cualquier pantalla) ===== */
+        .mobile-setlist-drawer {
+            position: fixed;
+            top: 0;
+            left: -85%;
+            width: 80%;
+            height: 100%;
+            background: var(--card);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+            z-index: 1100;
+            transition: left 0.3s ease;
+            padding: 20px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .mobile-setlist-drawer.open { left: 0; }
+        .mobile-setlist-drawer .close-drawer {
+            align-self: flex-end;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+        }
+        .mobile-setlist-drawer .drawer-item {
+            padding: 10px 6px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        .mobile-setlist-drawer .drawer-item.active { background: #fff3cd; border-left: 4px solid var(--accent); padding-left: 10px; }
+        .mobile-setlist-drawer .drawer-item .tono { color: var(--accent); font-weight: 600; font-size: 0.8rem; }
+
+        /* ===== BOTONES FLOTANTES ===== */
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fab:active { transform: scale(0.92); }
+        .fab-secondary { background: var(--primary); bottom: 90px; font-size: 1.4rem; }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        .modal-box {
+            background: #fff;
+            max-width: 800px;
+            width: 100%;
+            max-height: 95vh;
+            border-radius: 14px;
+            padding: 22px 26px;
+            box-shadow: 0 16px 50px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .modal-box h3 { font-size: 1.4rem; flex-shrink: 0; }
+        .modal-box .modal-desc { color: #555; font-size: 0.9rem; margin-bottom: 10px; flex-shrink: 0; }
+        .modal-box .modal-scroll { flex: 1; overflow-y: auto; padding-right: 4px; }
+        .modal-box label { font-weight: 600; font-size: 0.9rem; margin-top: 10px; display: block; flex-shrink: 0; }
+        .modal-box input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .editor-wrapper {
+            display: flex;
+            gap: 12px;
+            margin-top: 6px;
+            flex: 1;
+            min-height: 200px;
+        }
+        .editor-content {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            line-height: 1.8;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: #fcfcfc;
+            white-space: pre-wrap;
+            outline: none;
+            color: #000;
+            overflow-y: auto;
+            min-height: 200px;
+            max-height: 350px;
+        }
+        .editor-content .chord { color: var(--accent); font-weight: 700; }
+        .editor-content:focus { border-color: var(--accent); }
+
+        .editor-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            width: 110px;
+        }
+        .editor-sidebar button {
+            padding: 12px 0;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            width: 100%;
+        }
+        .editor-sidebar .btn-chord {
+            background: var(--accent);
+            color: #fff;
+        }
+        .editor-sidebar .btn-chord:hover { background: #b1122a; }
+        .editor-sidebar .btn-text {
+            background: #333;
+            color: #fff;
+        }
+        .editor-sidebar .btn-text:hover { background: #555; }
+        .editor-sidebar .btn-detect {
+            background: #0d6efd;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        .editor-sidebar .btn-detect:hover { background: #0b5ed7; }
+        .editor-sidebar .btn-clear {
+            background: #e9ecef;
+            color: #333;
+            font-size: 0.8rem;
+            padding: 8px 0;
+        }
+        .editor-sidebar .btn-clear:hover { background: #d0d4d8; }
+
+        .preview-area {
+            background: #fcfcfc;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            line-height: 2;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+        .preview-area .chord { color: var(--accent); font-weight: 700; }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            flex-shrink: 0;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .modal-actions button {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            min-width: 100px;
+        }
+        .modal-actions .btn-secondary { background: #e9ecef; color: #333; }
+        .modal-actions .btn-preview { background: #fd7e14; color: #fff; }
+        .modal-actions .btn-primary { background: var(--accent); color: #fff; }
+        .modal-actions .btn-primary:hover { background: #b1122a; }
+        .modal-actions .btn-danger-outline { background: #fff; color: #c0392b; border: 1px solid #c0392b; }
+
+        /* ===== SELECT DE TONO ===== */
+        .modal-box select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-top: 4px;
+            background: #fff;
+        }
+        .tono-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .tono-row > div { flex: 1; }
+
+        /* ===== IMPORTAR ARCHIVO .TXT ===== */
+        .file-import-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .file-import-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #333;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .file-import-btn:hover { background: #555; }
+        .file-import-row .modal-desc { margin: 0; font-size: 0.8rem; }
+
+        /* ===== LISTA VISUAL DE SETLISTS GUARDADOS ===== */
+        .saved-setlist-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .saved-setlist-row .info { flex: 1; min-width: 140px; }
+        .saved-setlist-row .info .name { font-weight: 700; color: var(--primary); }
+        .saved-setlist-row .info .count { font-size: 0.8rem; color: #777; }
+        .saved-setlist-row .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .saved-setlist-row .row-actions button {
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            min-width: auto;
+        }
+        .saved-setlist-row .row-actions .btn-load { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .saved-setlist-row .row-actions .btn-load-add { background: #fff3cd; border-color: #ffe082; }
+        .saved-setlist-row .row-actions .btn-rename { background: #eef; }
+        .saved-setlist-row .row-actions .btn-delete { background: #fdecea; color: #c0392b; border-color: #f1c3bd; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 820px) {
+            .sidebar { width: 280px; }
+            .main-content { padding: 12px 16px; }
+            .song-viewer { padding: 20px 18px; }
+            .chord-lyrics { font-size: 16px; padding: 14px 16px; max-height: 55vh; }
+            .song-title { font-size: 1.4rem; }
+        }
+        @media (max-width: 600px) {
+            .app-container .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 85%;
+                transform: translateX(-100%);
+                box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+                z-index: 300;
+                border-right: none;
+            }
+            .app-container .sidebar.open { transform: translateX(0); }
+            .main-content { padding: 10px 12px; }
+            .song-viewer { padding: 16px 12px; box-shadow: none; border-radius: 0; }
+            .chord-lyrics { font-size: 15px; padding: 12px 14px; max-height: 60vh; }
+            .toolbar .btn { font-size: 0.75rem; padding: 6px 12px; }
+            .fab { width: 48px; height: 48px; font-size: 1.4rem; bottom: 16px; right: 16px; }
+            .fab-secondary { bottom: 76px; }
+            .editor-sidebar { width: 90px; }
+            .editor-sidebar button { font-size: 0.8rem; padding: 8px 0; }
+            .modal-box { max-height: 92vh; padding: 16px; }
+            .interpreter-header .title { flex: 1 1 100%; }
+            .interpreter-header .controls { width: 100%; justify-content: flex-end; }
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 299;
+        }
+        .sidebar-overlay.active { display: block; }
+        @media (min-width: 601px) {
+            .sidebar-overlay { display: none !important; }
+        }
+        .text-muted { color: #777; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+
+    <div class="app-container">
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>🎵 Mis Alabanzas</h2>
+                <input type="text" id="searchInput" class="search-box" placeholder="Buscar por título o frase..." oninput="filterSongs()">
+                <div class="backup-row">
+                    <button onclick="exportBackup()" title="Descarga un archivo con TODAS tus canciones y setlists">⬇️ Exportar respaldo</button>
+                    <label class="backup-import-btn" for="backupFileInput" title="Carga un archivo de respaldo desde otro dispositivo">⬆️ Importar respaldo</label>
+                    <input type="file" id="backupFileInput" accept=".json,application/json" style="display:none;" onchange="importBackup(this.files[0])">
+                </div>
+            </div>
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="all" onclick="switchTab('all')">Repertorio</button>
+                <button class="tab-btn" data-tab="setlist" onclick="switchTab('setlist')">Setlist</button>
+                <button class="tab-btn" data-tab="tutor" onclick="switchTab('tutor')">📚 Tutor</button>
+            </div>
+            <div class="song-list-container" id="songListContainer">
+                <ul class="song-list" id="songList"></ul>
+            </div>
+            <div class="setlist-panel">
+                <span>📋 Setlist <span class="count" id="setlistCount">0</span></span>
+                <div class="actions">
+                    <button onclick="clearSetlist()">Vaciar</button>
+                    <button onclick="saveSetlist()">💾 Guardar</button>
+                    <button onclick="loadSetlistPrompt()">📂 Cargar</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN ===== -->
+        <main class="main-content" id="mainContent">
+            <div class="song-viewer" id="songViewer">
+                <div class="placeholder">
+                    <h2>Selecciona una alabanza o añade una nueva</h2>
+                    <button class="btn btn-accent" onclick="openNewSongModal()">➕ Añadir Canción</button>
+                    <button class="btn" onclick="event.stopPropagation(); toggleSidebar(true);" style="display:none;" id="mobileOpenSidebarBtn">☰ Abrir lista</button>
+                </div>
+            </div>
+            <div class="tutor-panel" id="tutorPanel">
+                <h2>📚 Tutor Musical</h2>
+                <p class="text-muted">Escribe tu duda y buscaré en mi base de conocimientos.</p>
+                <div class="tutor-search">
+                    <input type="text" id="tutorQuery" placeholder="Ej: ¿cómo se forma un acorde menor?" onkeydown="if(event.key==='Enter') askTutor()">
+                    <button onclick="askTutor()">Consultar</button>
+                </div>
+                <div class="tutor-result" id="tutorResult">
+                    <span class="text-muted">Aquí aparecerán las respuestas.</span>
+                </div>
+                <div class="tutor-import">
+                    <details>
+                        <summary>📥 Importar base de conocimientos (JSON)</summary>
+                        <textarea id="tutorJsonInput" placeholder="Pega aquí el JSON..."></textarea>
+                        <button onclick="importTutorJson()">Importar</button>
+                        <span id="tutorImportStatus" class="text-muted" style="margin-left:8px;"></span>
+                    </details>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== BOTONES FLOTANTES ===== -->
+    <button class="fab" id="fabAdd" onclick="openNewSongModal()" title="Añadir canción">➕</button>
+    <button class="fab fab-secondary" id="fabMobilePlayer" onclick="openInterpreterView()" title="Modo intérprete">🎤</button>
+
+    <!-- ===== MODO INTÉRPRETE (scroll continuo, cualquier pantalla) ===== -->
+    <div class="interpreter-view" id="interpreterView">
+        <div class="interpreter-header">
+            <span class="title">🎤<span class="t-long"> Modo intérprete</span></span>
+            <div class="controls">
+                <button onclick="interpreterZoom(-1)" title="Letra más pequeña">A−</button>
+                <button onclick="interpreterZoom(1)" title="Letra más grande">A+</button>
+                <button onclick="interpreterAutoFit()" title="Ajustar la letra sola al ancho de tu pantalla">Auto</button>
+                <button onclick="interpreterPrev()" title="Canción anterior">◀</button>
+                <button onclick="interpreterNext()" title="Siguiente canción">▶</button>
+                <button onclick="toggleSetlistDrawer()" title="Lista del setlist">☰</button>
+                <button onclick="closeInterpreterView()" title="Cerrar">✕</button>
+            </div>
+        </div>
+        <div class="interpreter-scroll" id="interpreterScroll">
+            <span class="text-muted">Abre el setlist para ver tus canciones aquí.</span>
+        </div>
+    </div>
+
+    <!-- ===== SETLIST DRAWER MÓVIL ===== -->
+    <div class="mobile-setlist-drawer" id="mobileSetlistDrawer">
+        <button class="close-drawer" onclick="toggleSetlistDrawer()">✕</button>
+        <h3>📋 Setlist</h3>
+        <div id="drawerList"><span class="text-muted">Vacío</span></div>
+        <div style="margin-top:auto;padding-top:12px;border-top:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline" style="font-size:0.8rem;" onclick="clearSetlist(); renderSetlistDrawer();">Vaciar</button>
+            <button class="btn" style="font-size:0.8rem;" onclick="saveSetlist();">💾 Guardar</button>
+            <button class="btn btn-outline" style="font-size:0.8rem;" onclick="loadSetlistPrompt();">📂 Cargar</button>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  CONSTANTES Y DATOS
+        // ================================================================
+        const STORAGE_SONGS = 'worship_songs';
+        const STORAGE_SETLISTS = 'worship_setlists';
+        const STORAGE_ACTIVE_SETLIST = 'worship_active_setlist';
+        const STORAGE_TUTOR = 'worship_tutor';
+        const STORAGE_INTERP_FONT = 'worship_interp_font_manual';
+
+        const TUTOR_DATA_EMBEDDED = [
+            { pregunta: "¿Cómo se define un intervalo de semitono?", respuesta: "En guitarra, un traste. En teclado, una tecla contigua." },
+            { pregunta: "¿Cómo se forma un acorde tríada mayor?", respuesta: "Tónica, tercera mayor y quinta justa. Ej: C-E-G." },
+            { pregunta: "¿Cómo se obtiene el relativo mayor de un acorde menor?", respuesta: "Sube 3 semitonos. Ej: Am → C." },
+        ];
+
+        let songs = [];
+        let setlists = {};
+        let activeSetlist = [];
+        let currentSongId = null;
+        let currentVersionIndex = 0;
+        let currentTab = 'all';
+        let tutorData = [];
+
+        function createEntryId() {
+            return 'entry-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+        }
+
+        function normalizeSongList(value) {
+            if (!Array.isArray(value)) return [];
+            return value.filter(song => song && (typeof song.id === 'string' || typeof song.id === 'number'))
+                .map(song => ({
+                    id: song.id,
+                    title: String(song.title || 'Sin título'),
+                    versions: Array.isArray(song.versions) && song.versions.length
+                        ? song.versions.filter(v => v && typeof v === 'object').map(v => ({
+                            key: String(v.key || 'Original'),
+                            originalTono: String(v.originalTono || 'C'),
+                            content: sanitizeContentHtml(String(v.content || ''))
+                        }))
+                        : [{ key: 'Original', originalTono: 'C', content: '' }]
+                }));
+        }
+
+        function normalizeSetlistEntries(value) {
+            if (!Array.isArray(value)) return [];
+            const validIds = new Set(songs.map(song => String(song.id)));
+            const seenSongs = new Set();
+            return value.filter(item => item && validIds.has(String(item.songId)))
+                .filter(item => {
+                    const key = String(item.songId);
+                    if (seenSongs.has(key)) return false;
+                    seenSongs.add(key);
+                    return true;
+                })
+                .map(item => ({
+                    entryId: String(item.entryId || createEntryId()),
+                    songId: item.songId,
+                versionIndex: (() => {
+                    const song = songs.find(candidate => String(candidate.id) === String(item.songId));
+                    const max = song ? Math.max(0, song.versions.length - 1) : 0;
+                    return Number.isInteger(item.versionIndex) && item.versionIndex >= 0
+                        ? Math.min(item.versionIndex, max) : 0;
+                })(),
+                    tonoAsignado: String(item.tonoAsignado || '')
+                }));
+        }
+
+        function normalizeSetlists(value) {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+            const result = {};
+            Object.keys(value).forEach(name => {
+                const cleanName = String(name).trim();
+                if (cleanName) result[cleanName] = normalizeSetlistEntries(value[name]);
+            });
+            return result;
+        }
+
+        function normalizeTutorData(value) {
+            if (!Array.isArray(value)) return TUTOR_DATA_EMBEDDED.map(item => ({ ...item }));
+            return value.filter(item => item && typeof item === 'object' && item.pregunta != null && item.respuesta != null)
+                .map(item => ({ pregunta: String(item.pregunta), respuesta: String(item.respuesta) }));
+        }
+
+        function saveToStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (e) {
+                console.error('No se pudo guardar en el almacenamiento local:', e);
+                alert('No se pudo guardar el cambio. Exporta un respaldo y libera espacio del navegador.');
+                return false;
+            }
+        }
+
+        function saveScalarToStorage(key, value) {
+            try {
+                localStorage.setItem(key, String(value));
+                return true;
+            } catch (e) {
+                console.error('No se pudo guardar la preferencia local:', e);
+                return false;
+            }
+        }
+
+        // ================================================================
+        //  ALMACENAMIENTO
+        // ================================================================
+        function loadData() {
+            const savedSongs = localStorage.getItem(STORAGE_SONGS);
+            if (savedSongs) { try { songs = normalizeSongList(JSON.parse(savedSongs)); } catch (e) { songs = []; } }
+            if (!songs.length) {
+                songs = [
+                    { id: 1, title: "Way Maker (Sinach)", versions: [{ key: "Original", originalTono: "Cm", content: "<span class='chord'>Cm</span>                        <span class='chord'>Ab</span>\nEstás aquí obrando en mi vida\n<span class='chord'>Eb</span>                      <span class='chord'>Bb</span>\nTe adoro, te adoro" }] },
+                    { id: 2, title: "Reckless Love (Cory Asbury)", versions: [{ key: "Original", originalTono: "C", content: "<span class='chord'>C</span>                   <span class='chord'>G</span>\nAntes de hablar, cantabas sobre mí\n<span class='chord'>Am</span>                  <span class='chord'>F</span>\nHas sido tan, tan bueno para mí" }] },
+                    // Canción de ejemplo con acordes ya marcados, para
+                    // comprobar de inmediato que transponer de tono
+                    // funciona (cámbiale el tono con el selector y
+                    // compara: en G debería verse Bm, Am, C, Em, etc.).
+                    { id: 3, title: "Hay Momentos Tan Especiales (F. Monroy)", versions: [{ key: "Original", originalTono: "D", content:
+                        "<span class='chord'>D                     F#m</span>\n" +
+                        "Hay momentos tan especiales\n" +
+                        "<span class='chord'>        Em       A</span>\n" +
+                        "junto a ti señor\n" +
+                        "<span class='chord'>D                     F#m</span>\n" +
+                        "Hay momentos tan especiales\n" +
+                        "<span class='chord'>         G       A</span>\n" +
+                        "junto a ti señor\n" +
+                        "<span class='chord'>           G                   A</span>\n" +
+                        "En los que puedo sentir tu presencia\n" +
+                        "<span class='chord'>           D          F#m       Bm</span>\n" +
+                        "En los que puedo recostarme en ti\n" +
+                        "<span class='chord'>           Em          A         D</span>\n" +
+                        "En los que puedo yo tomar de tu amor"
+                    } ] }
+                ];
+                saveSongs();
+            }
+            const savedSL = localStorage.getItem(STORAGE_SETLISTS);
+            if (savedSL) { try { setlists = normalizeSetlists(JSON.parse(savedSL)); } catch (e) { setlists = {}; } }
+            const savedActive = localStorage.getItem(STORAGE_ACTIVE_SETLIST);
+            if (savedActive) { try { activeSetlist = normalizeSetlistEntries(JSON.parse(savedActive)); } catch (e) { activeSetlist = []; } }
+            const savedTutor = localStorage.getItem(STORAGE_TUTOR);
+            if (savedTutor) {
+                try { tutorData = normalizeTutorData(JSON.parse(savedTutor)); } catch (e) { tutorData = TUTOR_DATA_EMBEDDED; }
+            } else {
+                tutorData = TUTOR_DATA_EMBEDDED;
+                saveTutor();
+            }
+            activeSetlist = normalizeSetlistEntries(activeSetlist);
+            setlists = normalizeSetlists(setlists);
+        }
+
+        function saveSongs() { return saveToStorage(STORAGE_SONGS, songs); }
+        function saveSetlists() { return saveToStorage(STORAGE_SETLISTS, setlists); }
+        function saveActiveSetlist() { return saveToStorage(STORAGE_ACTIVE_SETLIST, activeSetlist); }
+        function saveTutor() { return saveToStorage(STORAGE_TUTOR, tutorData); }
+
+        // ================================================================
+        //  RESPALDO (exportar / importar) — para mover tus canciones entre
+        //  celular, tablet, laptop y PC mientras no haya sincronización
+        //  automática en la nube. NUNCA se sube a ningún servidor: es solo
+        //  un archivo .json que tú mismo mueves (WhatsApp, correo, USB,
+        //  Google Drive, como prefieras).
+        // ================================================================
+        function exportBackup() {
+            const backup = {
+                tipo: 'respaldo-cancionero',
+                fecha: new Date().toISOString(),
+                songs: songs,
+                setlists: setlists,
+                activeSetlist: activeSetlist,
+                tutorData: tutorData
+            };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const fecha = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `respaldo-cancionero-${fecha}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function importBackup(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                let data;
+                try {
+                    data = JSON.parse(evt.target.result);
+                } catch (e) {
+                    alert('❌ Ese archivo no es un respaldo válido (no se pudo leer como JSON).');
+                    return;
+                }
+                if (!data || !Array.isArray(data.songs)) {
+                    alert('❌ Ese archivo no tiene el formato de un respaldo del Cancionero.');
+                    return;
+                }
+                const modo = confirm(
+                    `Este respaldo tiene ${data.songs.length} canción(es).\n\n` +
+                    `Aceptar = REEMPLAZAR todo lo que tienes ahora en este dispositivo por lo del respaldo.\n` +
+                    `Cancelar = FUSIONAR: agregar las canciones del respaldo que no tengas, sin borrar las que ya tienes aquí.`
+                );
+                if (modo) {
+                    // Reemplazar todo
+                    songs = normalizeSongList(data.songs).map(song => ({
+                        ...song,
+                        versions: song.versions.map(version => ({
+                            ...version,
+                            content: sanitizeContentHtml(version.content)
+                        }))
+                    }));
+                    setlists = normalizeSetlists(data.setlists || {});
+                    activeSetlist = normalizeSetlistEntries(data.activeSetlist || []);
+                    tutorData = normalizeTutorData(data.tutorData || tutorData);
+                } else {
+                    // Fusionar: agrega canciones cuyo id no exista ya aquí
+                    const existingIds = new Set(songs.map(s => s.id));
+                    normalizeSongList(data.songs).forEach(s => {
+                        if (!existingIds.has(s.id)) songs.push(s);
+                    });
+                    Object.keys(normalizeSetlists(data.setlists || {})).forEach(name => {
+                        if (!setlists[name]) setlists[name] = normalizeSetlists(data.setlists || {})[name];
+                    });
+                }
+                songs = normalizeSongList(songs);
+                setlists = normalizeSetlists(setlists);
+                activeSetlist = normalizeSetlistEntries(activeSetlist);
+                tutorData = normalizeTutorData(tutorData);
+                saveSongs();
+                saveSetlists();
+                saveActiveSetlist();
+                saveTutor();
+                document.getElementById('backupFileInput').value = '';
+                currentSongId = null;
+                renderList();
+                renderSetlistDrawer();
+                updatePlayerSetlist();
+                showPlaceholder();
+                alert('✅ Respaldo importado correctamente.');
+            };
+            reader.onerror = function() {
+                alert('❌ No se pudo leer el archivo.');
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // ================================================================
+        //  RENDERIZADO
+        // ================================================================
+        function normalizeForSearch(str) {
+            return (str || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, ''); // quita tildes/acentos
+        }
+
+        let selectedLetter = null; // letra elegida en la "portada" del Repertorio
+
+        function normalizeLetter(title) {
+            const clean = normalizeForSearch(title).trim();
+            const first = clean.charAt(0).toUpperCase();
+            return /[A-Z]/.test(first) ? first : '#';
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('songList');
+            listEl.innerHTML = '';
+            let displaySongs = [];
+            if (currentTab === 'all') {
+                displaySongs = [...songs].sort((a, b) => a.title.localeCompare(b.title));
+            } else if (currentTab === 'setlist') {
+                const ids = new Set(activeSetlist.map(i => i.songId));
+                displaySongs = songs.filter(s => ids.has(s.id)).sort((a, b) => a.title.localeCompare(b.title));
+            } else if (currentTab === 'tutor') {
+                document.getElementById('songListContainer').style.display = 'none';
+                document.getElementById('songViewer').style.display = 'none';
+                document.getElementById('tutorPanel').classList.add('active');
+                return;
+            }
+            document.getElementById('songListContainer').style.display = 'block';
+            document.getElementById('songViewer').style.display = 'flex';
+            document.getElementById('tutorPanel').classList.remove('active');
+
+            const query = normalizeForSearch(document.getElementById('searchInput').value.trim());
+            document.getElementById('setlistCount').innerText = activeSetlist.length;
+
+            // ---- Portada alfabética: solo en Repertorio, sin búsqueda activa ----
+            if (currentTab === 'all' && !query) {
+                if (!selectedLetter) {
+                    renderLetterCover(listEl, displaySongs);
+                    return;
+                }
+                // Letra elegida: filtrar por esa letra y mostrar botón de volver
+                const backLi = document.createElement('li');
+                backLi.className = 'song-item back-to-letters';
+                backLi.innerHTML = `<span>← Volver a las letras</span>`;
+                backLi.onclick = () => { selectedLetter = null; renderList(); };
+                listEl.appendChild(backLi);
+                if (selectedLetter !== 'TODAS') {
+                    displaySongs = displaySongs.filter(s => normalizeLetter(s.title) === selectedLetter);
+                }
+                if (!displaySongs.length) {
+                    const empty = document.createElement('li');
+                    empty.className = 'song-item text-muted';
+                    empty.style.cursor = 'default';
+                    empty.innerHTML = `<span>No hay alabanzas que empiecen con "${selectedLetter}" todavía.</span>`;
+                    listEl.appendChild(empty);
+                }
+            }
+
+            displaySongs.forEach(song => {
+                if (query) {
+                    let match = normalizeForSearch(song.title).includes(query);
+                    if (!match) {
+                        for (let v of song.versions) {
+                            const plain = normalizeForSearch(v.content.replace(/<span[^>]*>.*?<\/span>/g, ''));
+                            if (plain.includes(query)) { match = true; break; }
+                        }
+                    }
+                    if (!match) return;
+                }
+                let li = document.createElement('li');
+                li.className = `song-item ${currentSongId === song.id ? 'active' : ''}`;
+                const inSetlist = activeSetlist.some(item => item.songId === song.id);
+                li.innerHTML = `<span>${escapeHtml(song.title)}</span>${inSetlist ? ' <span class="setlist-badge">✓</span>' : ''}`;
+                li.onclick = () => selectSong(song.id);
+                listEl.appendChild(li);
+            });
+        }
+
+        // Portada: solo letras + acceso directo a "ver todas". No muestra
+        // los títulos de una vez — ideal para el celular cuando tienes
+        // muchas alabanzas y no quieres desplazarte por una lista larga.
+        function renderLetterCover(listEl, allSongs) {
+            const counts = {};
+            allSongs.forEach(s => {
+                const l = normalizeLetter(s.title);
+                counts[l] = (counts[l] || 0) + 1;
+            });
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const wrapper = document.createElement('li');
+            wrapper.className = 'letter-cover';
+            wrapper.style.cursor = 'default';
+
+            const allBtn = document.createElement('button');
+            allBtn.className = 'letter-see-all';
+            allBtn.textContent = `📜 Ver todas (${allSongs.length})`;
+            allBtn.onclick = () => { selectedLetter = 'TODAS'; renderList(); };
+            wrapper.appendChild(allBtn);
+
+            const grid = document.createElement('div');
+            grid.className = 'letter-grid';
+            letters.forEach(letter => {
+                const hasSongs = !!counts[letter];
+                const btn = document.createElement('button');
+                btn.className = 'letter-btn' + (hasSongs ? '' : ' disabled');
+                btn.textContent = letter;
+                btn.disabled = !hasSongs;
+                btn.onclick = () => { selectedLetter = letter; renderList(); };
+                grid.appendChild(btn);
+            });
+            wrapper.appendChild(grid);
+            listEl.appendChild(wrapper);
+        }
+
+        function filterSongs() {
+            // Si el usuario empieza a buscar, la búsqueda manda sobre la
+            // portada de letras (pero no perdemos la letra elegida: si
+            // borra el texto, sigue viendo esa letra, no la portada).
+            renderList();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.tab-btn[data-tab="${tab}"]`)?.classList.add('active');
+            if (tab === 'tutor') {
+                document.getElementById('songListContainer').style.display = 'none';
+                document.getElementById('songViewer').style.display = 'none';
+                document.getElementById('tutorPanel').classList.add('active');
+            } else {
+                document.getElementById('songListContainer').style.display = 'block';
+                document.getElementById('songViewer').style.display = 'flex';
+                document.getElementById('tutorPanel').classList.remove('active');
+                renderList();
+                if (currentSongId) renderSongViewer();
+                else showPlaceholder();
+            }
+            if (window.innerWidth <= 600) toggleSidebar(false);
+        }
+
+        function showPlaceholder() {
+            const viewer = document.getElementById('songViewer');
+            viewer.innerHTML = `
+                <div class="placeholder">
+                    <h2>Selecciona una alabanza o añade una nueva</h2>
+                    <button class="btn btn-accent" onclick="openNewSongModal()">➕ Añadir Canción</button>
+                    <button class="btn" onclick="event.stopPropagation(); toggleSidebar(true);" style="display:${window.innerWidth<=600?'inline-block':'none'};" id="mobileOpenSidebarBtn">☰ Abrir lista</button>
+                </div>
+            `;
+        }
+
+        function selectSong(id) {
+            currentSongId = id;
+            const entry = activeSetlist.find(item => item.songId === id);
+            currentVersionIndex = entry && Number.isInteger(entry.versionIndex) ? entry.versionIndex : 0;
+            renderList();
+            renderSongViewer();
+            if (window.innerWidth <= 600) toggleSidebar(false);
+        }
+
+        function renderSongViewer() {
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) { showPlaceholder(); return; }
+            window._currentSongId = song.id;
+            window._currentVersionIndex = currentVersionIndex;
+            const viewer = document.getElementById('songViewer');
+            const versionsOptions = song.versions.map((v, idx) =>
+                `<option value="${idx}" ${idx===currentVersionIndex?'selected':''}>${escapeHtml(v.key)}</option>`
+            ).join('');
+            const isInSetlist = activeSetlist.some(item => item.songId === song.id);
+            const entry = activeSetlist.find(item => item.songId === song.id);
+            const version = song.versions[currentVersionIndex];
+            const originalTono = version.originalTono || 'C';
+            const effectiveTono = getEffectiveTono(song.id, entry, originalTono, currentVersionIndex);
+
+            let displayContent = version.content;
+            let diagSemitones = 0;
+            const spanCountBefore = countChordSpans(displayContent);
+            if (effectiveTono && effectiveTono !== originalTono) {
+                const origIdx = tonoRootIndex(originalTono);
+                const destIdx = tonoRootIndex(effectiveTono);
+                if (origIdx !== -1 && destIdx !== -1) {
+                    const semitones = (destIdx - origIdx + 12) % 12;
+                    diagSemitones = semitones;
+                    displayContent = getDisplayContent(displayContent, semitones);
+                }
+            } else {
+                // Aunque no haga falta transponer, igual coloreamos los
+                // acordes que la app reconozca por su cuenta (si es que el
+                // texto no tenía nada marcado todavía).
+                displayContent = getDisplayContent(displayContent, 0);
+            }
+
+            // Línea de diagnóstico discreta (se puede seleccionar/copiar).
+            const diagText = `🔧 original: ${originalTono} · tono actual: ${effectiveTono} · semitonos: ${diagSemitones >= 0 ? '+' : ''}${diagSemitones} · marcado a mano: ${spanCountBefore > 0 ? spanCountBefore + ' span(s)' : 'no (reconocido por patrón automáticamente)'}`;
+
+            viewer.innerHTML = `
+                <div class="toolbar">
+                    <button class="btn" onclick="event.stopPropagation(); toggleSidebar(true);" style="display:${window.innerWidth<=600?'inline-block':'none'};" title="Ver la lista de alabanzas / setlist">☰ Ver lista</button>
+                    <button class="btn" onclick="toggleSetlist(${song.id})">${isInSetlist ? '✓ En Setlist' : '+ Añadir al Setlist'}</button>
+                    <button class="btn btn-accent" onclick="openNewVersionModal(${song.id})">+ Versión</button>
+                    <button class="btn btn-danger" onclick="deleteSong(${song.id})">🗑 Eliminar</button>
+                    <button class="btn btn-outline" onclick="openInterpreterForSong(${song.id})">🎤 Modo intérprete</button>
+                </div>
+                <h1 class="song-title">${escapeHtml(song.title)}</h1>
+                <div class="song-meta">
+                    <span>Versión: <select class="version-selector" onchange="changeVersion(this.value)">${versionsOptions}</select></span>
+                    ${song.versions.length > 1 ? `<button class="btn btn-outline" style="padding:4px 10px;font-size:0.75rem;color:#c0392b;" onclick="deleteCurrentVersion(${song.id}, ${currentVersionIndex})" title="Elimina solo esta versión, sin tocar las demás">🗑 Borrar esta versión</button>` : ''}
+                    <span>Tono: <select onchange="changeViewerTono(this.value)">${buildTonoOptions(effectiveTono)}</select></span>
+                    <button class="btn btn-outline" style="padding:4px 10px;font-size:0.75rem;" onclick="openSetOriginalTonoModal(${song.id}, ${currentVersionIndex})" title="Corrige desde qué tono parte esta versión (no toca letra ni acordes)">⚙ Original: ${originalTono}</button>
+                </div>
+                <div style="font-size:0.72rem;color:#999;margin-bottom:10px;user-select:all;">${diagText}</div>
+                <div class="chord-lyrics">${displayContent}</div>
+            `;
+            fitViewerText();
+        }
+
+        function changeVersion(index) {
+            currentVersionIndex = parseInt(index);
+            const entry = activeSetlist.find(item => item.songId === currentSongId);
+            if (entry) {
+                entry.versionIndex = currentVersionIndex;
+                saveActiveSetlist();
+            }
+            renderSongViewer();
+        }
+
+        // ================================================================
+        //  TRANSPOSICIÓN: tono efectivo por canción/versión
+        // ================================================================
+        // Si la canción está en el setlist, el tono "manda" desde ahí
+        // (se guarda y se comparte con el modo intérprete). Si no está en
+        // el setlist, el cambio de tono es solo para esta sesión de
+        // navegación (no se guarda), para poder "jugar" con la
+        // transposición libremente sin afectar nada.
+        let sessionTonoOverride = {};
+
+        function getEffectiveTono(songId, entry, originalTono, versionIdx) {
+            if (entry && entry.tonoAsignado) return entry.tonoAsignado;
+            const key = songId + ':' + versionIdx;
+            if (sessionTonoOverride[key]) return sessionTonoOverride[key];
+            return originalTono;
+        }
+
+        function changeViewerTono(newTono) {
+            const song = songs.find(s => s.id === currentSongId);
+            if (!song) return;
+            const entry = activeSetlist.find(item => item.songId === currentSongId);
+            if (entry) {
+                entry.tonoAsignado = newTono;
+                saveActiveSetlist();
+                renderList();
+                renderSetlistDrawer();
+            } else {
+                sessionTonoOverride[currentSongId + ':' + currentVersionIndex] = newTono;
+            }
+            renderSongViewer();
+        }
+
+        // Corrige el "tono original" guardado de una versión — no toca
+        // letra ni acordes, solo el dato que usa la transposición. Útil
+        // para canciones guardadas ANTES de este cambio (que no tenían
+        // este dato y por default asumen "C").
+        function openSetOriginalTonoModal(songId, versionIdx) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const version = song.versions[versionIdx];
+            if (!version) return;
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'originalTonoModalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box" style="max-width:380px;">
+                    <h3>Tono original de esta versión</h3>
+                    <p class="modal-desc">Esto NO cambia los acordes ni la letra — solo le indica a la app desde qué tono partir para transponer correctamente.</p>
+                    <select id="originalTonoSelect">${buildTonoOptions(version.originalTono || 'C')}</select>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeOriginalTonoModal()">Cancelar</button>
+                        <button class="btn-primary" onclick="confirmOriginalTono(${songId}, ${versionIdx})">Guardar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function confirmOriginalTono(songId, versionIdx) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const select = document.getElementById('originalTonoSelect');
+            song.versions[versionIdx].originalTono = select ? select.value : 'C';
+            saveSongs();
+            closeOriginalTonoModal();
+            renderSongViewer();
+        }
+
+        function closeOriginalTonoModal() {
+            const modal = document.getElementById('originalTonoModalOverlay');
+            if (modal) modal.remove();
+        }
+
+        // Herramienta de diagnóstico: muestra el HTML crudo guardado de una
+        // versión, para poder copiarlo y compartirlo si la transposición (u
+        // otra cosa) no se comporta como se espera.
+        function showRawContentModal(songId, versionIdx) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const version = song.versions[versionIdx];
+            if (!version) return;
+            const escaped = version.content
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'rawContentModalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box" style="max-width:700px;">
+                    <h3>🔍 HTML crudo — ${escapeHtml(song.title)} (${escapeHtml(version.key)})</h3>
+                    <p class="modal-desc">Detectados ${countChordSpans(version.content)} span(s) de acorde en este texto.</p>
+                    <textarea id="rawContentArea" readonly style="width:100%;min-height:260px;font-family:monospace;font-size:0.8rem;padding:10px;border:1px solid #ccc;border-radius:6px;">${escaped}</textarea>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeRawContentModal()">Cerrar</button>
+                        <button class="btn-primary" onclick="copyRawContent()">📋 Copiar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function copyRawContent() {
+            const ta = document.getElementById('rawContentArea');
+            if (!ta) return;
+            ta.select();
+            document.execCommand('copy');
+            alert('Copiado al portapapeles.');
+        }
+
+        function closeRawContentModal() {
+            const modal = document.getElementById('rawContentModalOverlay');
+            if (modal) modal.remove();
+        }
+
+        // ================================================================
+        //  ELIMINAR CANCIÓN
+        // ================================================================
+        function deleteSong(id) {
+            if (!confirm("⚠️ ¿Eliminar esta canción de la BIBLIOTECA? Esto no afecta a otros setlists guardados, pero sí la quitará del setlist activo si estaba en él.")) return;
+            songs = songs.filter(s => s.id !== id);
+            activeSetlist = activeSetlist.filter(item => item.songId !== id);
+            saveSongs();
+            saveActiveSetlist();
+            if (currentSongId === id) { currentSongId = null; showPlaceholder(); }
+            renderList();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+        }
+
+        // ================================================================
+        //  SETLIST
+        // ================================================================
+        // ================================================================
+        //  MODAL GENÉRICO DE TEXTO (nombrar / renombrar setlists, etc.)
+        // ================================================================
+        let _textInputModalCallback = null;
+
+        function openTextInputModal(title, placeholder, initialValue, onConfirm) {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'textInputModalOverlay';
+            const safeTitle = escapeHtml(title || '');
+            const safePlaceholder = escapeHtml(placeholder || '');
+            const safeValue = escapeHtml(initialValue || '');
+            overlay.innerHTML = `
+                <div class="modal-box" style="max-width:420px;">
+                    <h3>${safeTitle}</h3>
+                    <input type="text" id="textInputModalField" placeholder="${safePlaceholder}" value="${safeValue}" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmTextInputModal();}">
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeTextInputModal()">Cancelar</button>
+                        <button class="btn-primary" onclick="confirmTextInputModal()">Guardar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            _textInputModalCallback = onConfirm;
+            setTimeout(() => {
+                const field = document.getElementById('textInputModalField');
+                if (field) { field.focus(); field.select(); }
+            }, 100);
+        }
+
+        function confirmTextInputModal() {
+            const field = document.getElementById('textInputModalField');
+            const value = field ? field.value.trim() : '';
+            if (!value) { alert('Escribe un nombre.'); return; }
+            const cb = _textInputModalCallback;
+            closeTextInputModal();
+            if (cb) cb(value);
+        }
+
+        function closeTextInputModal() {
+            const modal = document.getElementById('textInputModalOverlay');
+            if (modal) modal.remove();
+            _textInputModalCallback = null;
+        }
+
+        // ================================================================
+        //  AÑADIR / QUITAR DEL SETLIST (con selector de tono, no prompt)
+        // ================================================================
+        function toggleSetlist(songId) {
+            const idx = activeSetlist.findIndex(item => item.songId === songId);
+            if (idx === -1) {
+                openAddToSetlistModal(songId);
+            } else {
+                activeSetlist.splice(idx, 1);
+                saveActiveSetlist();
+                renderList();
+                if (currentSongId === songId) renderSongViewer();
+                renderSetlistDrawer();
+                updatePlayerSetlist();
+            }
+        }
+
+        function openAddToSetlistModal(songId) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const suggestedIndex = song.id === currentSongId ? currentVersionIndex : 0;
+            const suggested = (song.versions[suggestedIndex] && song.versions[suggestedIndex].originalTono) || 'C';
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'tonoPickerModalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box" style="max-width:380px;">
+                    <h3>Añadir "${escapeHtml(song.title)}" al Setlist</h3>
+                    <label>Tono para esta presentación:</label>
+                    <select id="setlistTonoSelect">${buildTonoOptions(suggested)}</select>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeTonoPickerModal()">Cancelar</button>
+                        <button class="btn-primary" onclick="confirmAddToSetlist(${songId})">➕ Añadir</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function confirmAddToSetlist(songId) {
+            const select = document.getElementById('setlistTonoSelect');
+            const tono = select ? select.value : 'C';
+            if (activeSetlist.some(item => item.songId === songId)) {
+                closeTonoPickerModal();
+                return;
+            }
+            const versionIndex = songId === currentSongId ? currentVersionIndex : 0;
+            activeSetlist.push({ entryId: createEntryId(), songId, versionIndex, tonoAsignado: tono });
+            saveActiveSetlist();
+            closeTonoPickerModal();
+            renderList();
+            if (currentSongId === songId) renderSongViewer();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+        }
+
+        function closeTonoPickerModal() {
+            const modal = document.getElementById('tonoPickerModalOverlay');
+            if (modal) modal.remove();
+        }
+
+        function clearSetlist() {
+            if (activeSetlist.length && !confirm("¿Vaciar el setlist actual?\n\nEsto NO elimina tus canciones de la biblioteca — solo quita las referencias del setlist activo. Tus canciones originales quedan intactas.")) return;
+            activeSetlist = [];
+            saveActiveSetlist();
+            renderList();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+        }
+
+        // ================================================================
+        //  SETLISTS GUARDADOS (lista visual: cargar / añadir / renombrar / eliminar)
+        // ================================================================
+        function saveSetlist() {
+            if (!activeSetlist.length) { alert('El setlist actual está vacío — añade canciones primero.'); return; }
+            openTextInputModal('💾 Guardar setlist actual', 'Ej: Domingo 10 AM', '', function(name) {
+                if (setlists[name] && !confirm(`Ya existe un setlist llamado "${name}". ¿Reemplazarlo?`)) return;
+                setlists[name] = JSON.parse(JSON.stringify(activeSetlist));
+                saveSetlists();
+                alert(`✅ Setlist "${name}" guardado. Tu biblioteca de canciones no se ve afectada.`);
+            });
+        }
+
+        function loadSetlistPrompt() {
+            openSavedSetlistsModal();
+        }
+
+        function openSavedSetlistsModal() {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'savedSetlistsModalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box" style="max-width:600px;">
+                    <h3>📂 Setlists guardados</h3>
+                    <p class="modal-desc">Cargar, renombrar o eliminar un setlist guardado nunca borra canciones de tu biblioteca — solo maneja listas de referencias.</p>
+                    <div class="modal-scroll" id="savedSetlistsList"></div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeSavedSetlistsModal()">Cerrar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            renderSavedSetlistsList();
+        }
+
+        function renderSavedSetlistsList() {
+            const container = document.getElementById('savedSetlistsList');
+            if (!container) return;
+            const names = Object.keys(setlists);
+            if (!names.length) {
+                container.innerHTML = '<p class="text-muted">Todavía no has guardado ningún setlist.</p>';
+                return;
+            }
+            container.innerHTML = names.map(name => {
+                const count = (setlists[name] || []).length;
+                const safe = encodeURIComponent(name).replace(/'/g, '%27');
+                return `
+                    <div class="saved-setlist-row">
+                        <div class="info">
+                            <div class="name">${escapeHtml(name)}</div>
+                            <div class="count">${count} canción${count === 1 ? '' : 'es'}</div>
+                        </div>
+                        <div class="row-actions">
+                            <button class="btn-load" onclick="applySetlist(decodeURIComponent('${safe}'), 'replace')">Cargar</button>
+                            <button class="btn-load-add" onclick="applySetlist(decodeURIComponent('${safe}'), 'append')">Añadir a actual</button>
+                            <button class="btn-rename" onclick="promptRenameSetlist(decodeURIComponent('${safe}'))">✎ Renombrar</button>
+                            <button class="btn-delete" onclick="deleteSavedSetlist(decodeURIComponent('${safe}'))">🗑 Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function applySetlist(name, mode) {
+            if (!setlists[name]) return;
+            if (mode === 'replace') {
+                activeSetlist = JSON.parse(JSON.stringify(setlists[name]));
+            } else {
+                const existing = new Set(activeSetlist.map(item => String(item.songId)));
+                activeSetlist = activeSetlist.concat(JSON.parse(JSON.stringify(setlists[name]))
+                    .filter(item => !existing.has(String(item.songId))));
+            }
+            saveActiveSetlist();
+            renderList();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+            if (currentSongId) renderSongViewer();
+            closeSavedSetlistsModal();
+        }
+
+        function promptRenameSetlist(oldName) {
+            openTextInputModal('✎ Renombrar setlist', 'Nuevo nombre', oldName, function(newName) {
+                if (newName === oldName) return;
+                if (setlists[newName] && !confirm(`Ya existe un setlist llamado "${newName}". ¿Reemplazarlo?`)) return;
+                setlists[newName] = setlists[oldName];
+                delete setlists[oldName];
+                saveSetlists();
+                renderSavedSetlistsList();
+            });
+        }
+
+        function deleteSavedSetlist(name) {
+            if (!confirm(`¿Eliminar el setlist guardado "${name}"?\n\nEsto NO elimina ninguna canción de tu biblioteca — solo borra esta lista guardada.`)) return;
+            delete setlists[name];
+            saveSetlists();
+            renderSavedSetlistsList();
+        }
+
+        function closeSavedSetlistsModal() {
+            const modal = document.getElementById('savedSetlistsModalOverlay');
+            if (modal) modal.remove();
+        }
+
+        function removeFromSetlist(songId) {
+            activeSetlist = activeSetlist.filter(item => item.songId !== songId);
+            saveActiveSetlist();
+            renderList();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+        }
+
+        function reorderSetlist(from, to) {
+            if (from < 0 || to < 0 || from >= activeSetlist.length || to >= activeSetlist.length) return;
+            const [item] = activeSetlist.splice(from, 1);
+            activeSetlist.splice(to, 0, item);
+            saveActiveSetlist();
+            renderSetlistDrawer();
+            updatePlayerSetlist();
+        }
+
+        // ================================================================
+        //  UTILIDADES: TONOS, PEGADO EN TEXTO PLANO, IMPORTAR .TXT
+        // ================================================================
+        function buildTonoOptions(selected) {
+            const notes = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+            const all = [];
+            notes.forEach(n => { all.push(n); all.push(n + 'm'); });
+            return all.map(t => `<option value="${escapeHtml(t)}" ${t === selected ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('');
+        }
+
+        function tonoRootIndex(tono) {
+            if (!tono) return -1;
+            const m = tono.match(/^[A-G][b#]?/);
+            if (!m) return -1;
+            return getNoteIndex(m[0]);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function sanitizeContentHtml(html) {
+            const container = document.createElement('div');
+            container.innerHTML = String(html || '');
+            container.querySelectorAll('script, iframe, object, embed, link, meta, style').forEach(el => el.remove());
+            container.querySelectorAll('*').forEach(el => {
+                [...el.attributes].forEach(attr => {
+                    const name = attr.name.toLowerCase();
+                    const value = attr.value.trim().toLowerCase();
+                    if (name.startsWith('on') || ((name === 'href' || name === 'src') && value.startsWith('javascript:'))) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            return container.innerHTML;
+        }
+
+        // ================================================================
+        //  DETECCIÓN AUTOMÁTICA DE ACORDES
+        // ================================================================
+        // Ya no hace falta pintar nada a mano: al pegar, importar un .txt,
+        // o pulsar "🔁 Auto-detectar acordes", la app analiza cada línea y
+        // decide sola si es una línea de acordes (mayormente tokens con
+        // forma de acorde, como "D", "Em7-", "Bm7-A", "G/B") o una línea de
+        // letra normal. Los espacios se preservan siempre exactamente.
+
+        // ¿Este token individual tiene forma de acorde? Soporta notación
+        // compuesta con guion (Bm7-A) y bajo invertido con slash (G/B).
+        function isLikelyChordToken(tok) {
+            if (!tok) return true; // segmento vacío (p.ej. guion al final): se acepta
+            const CHORD_RE = /^[A-G][b#]?(?:maj|min|dim|aug|sus|add|m|M|no|omit|alt)?[0-9]*(?:[b#][0-9]+)*(?:\([^)]*\))?$/;
+            return tok.split('-').every(seg => {
+                if (!seg) return true;
+                return seg.split('/').every(part => CHORD_RE.test(part));
+            });
+        }
+
+        // ¿Esta línea completa parece una línea de acordes? (la mayoría de
+        // sus palabras separadas por espacio tienen forma de acorde)
+        function looksLikeChordLine(line) {
+            const trimmed = line.trim();
+            if (!trimmed) return false;
+            const tokens = trimmed.split(/\s+/).filter(Boolean);
+            if (!tokens.length) return false;
+            const chordLike = tokens.filter(isLikelyChordToken).length;
+            return (chordLike / tokens.length) >= 0.6;
+        }
+
+        // Convierte texto plano (con sus espacios/tabs ya normalizados) en
+        // HTML con cada acorde envuelto en <span class="chord">, detectando
+        // línea por línea. Devuelve HTML listo para meter en el editor o en
+        // el contenido guardado de una versión.
+        function autoDetectChords(plainText) {
+            const lines = plainText.split('\n');
+            return lines.map(line => {
+                if (!line.trim()) return '';
+                if (!looksLikeChordLine(line)) return escapeHtml(line);
+                const parts = line.split(/(\s+)/);
+                return parts.map(p => {
+                    if (!p.trim()) return p;
+                    return `<span class="chord">${escapeHtml(p)}</span>`;
+                }).join('');
+            }).join('\n');
+        }
+
+        // Igual que autoDetectChords, pero además TRANSPONE cada acorde que
+        // reconoce en el mismo paso — sin necesitar que existan spans
+        // previos. Esto es lo que hace que la transposición funcione aunque
+        // nunca hayas marcado nada a mano ni usado "🪄 Detectar": la app
+        // reconoce la forma de un acorde (letra A-G + variantes) por su
+        // cuenta y la convierte directo, igual que reconocería cualquier
+        // acorde musical.
+        function detectAndTransposeChords(plainText, semitones) {
+            const lines = plainText.split('\n');
+            return lines.map(line => {
+                if (!line.trim()) return '';
+                if (!looksLikeChordLine(line)) return escapeHtml(line);
+                const parts = line.split(/(\s+)/);
+                return parts.map(p => {
+                    if (!p.trim()) return p;
+                    const transposed = semitones ? transposeChord(p, semitones) : p;
+                    return `<span class="chord">${escapeHtml(transposed)}</span>`;
+                }).join('');
+            }).join('\n');
+        }
+
+        // Extrae el texto plano (con saltos de línea y espacios intactos)
+        // de un contenido HTML guardado, sin importar qué formato traiga
+        // por dentro: texto con saltos de línea literales (el modelo normal
+        // de esta app), o un <div> por línea (como guardan algunos
+        // navegadores el contenido de un contenteditable cuando el pegado
+        // no pasó por nuestro control) — ambos casos se reconstruyen bien.
+        function htmlToPlainText(html) {
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            const BLOCK_TAGS = ['DIV', 'P', 'LI', 'TR'];
+            function walk(node) {
+                let result = '';
+                for (const child of node.childNodes) {
+                    if (child.nodeType === 3) { // texto
+                        result += child.textContent || '';
+                    } else if (child.nodeType === 1) { // elemento
+                        const tag = child.tagName;
+                        if (tag === 'BR') {
+                            result += '\n';
+                        } else if (BLOCK_TAGS.includes(tag)) {
+                            if (result.length && !result.endsWith('\n')) result += '\n';
+                            result += walk(child);
+                            if (!result.endsWith('\n')) result += '\n';
+                        } else {
+                            result += walk(child);
+                        }
+                    }
+                }
+                return result;
+            }
+            return walk(container).replace(/\n+$/, '');
+        }
+
+        // Re-detecta automáticamente los acordes de una versión YA
+        // GUARDADA (por ejemplo, una canción vieja con formato heredado de
+        // Google Docs que nuestro sistema no reconocía). IMPORTANTE: nunca
+        // sobrescribe la versión original — crea una versión NUEVA aparte,
+        // para que si el resultado no queda bien, tu versión original siga
+        // intacta y solo tengas que borrar la nueva con el botón de la
+        // papelera junto al selector de versión.
+        function autoDetectSongVersion(songId, versionIdx) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const version = song.versions[versionIdx];
+            if (!version) return;
+            if (!confirm('Esto va a crear una copia NUEVA de esta versión con los acordes detectados automáticamente — tu versión original no se toca ni se borra. ¿Continuar?')) return;
+            const plainText = htmlToPlainText(version.content);
+            const newContent = autoDetectChords(plainText);
+            song.versions.push({
+                key: version.key + ' (auto-detectado)',
+                originalTono: version.originalTono || 'C',
+                content: newContent
+            });
+            saveSongs();
+            currentVersionIndex = song.versions.length - 1;
+            renderSongViewer();
+        }
+
+        // Elimina SOLO la versión que estás viendo (no toda la canción).
+        // Útil para limpiar intentos fallidos sin perder las demás versiones.
+        function deleteCurrentVersion(songId, versionIdx) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            if (song.versions.length <= 1) {
+                alert('No puedes borrar la última versión que queda — usa "🗑 Eliminar" para borrar toda la canción si ya no la quieres.');
+                return;
+            }
+            if (!confirm(`¿Eliminar solo la versión "${song.versions[versionIdx].key}"? Las demás versiones de esta canción no se tocan.`)) return;
+            song.versions.splice(versionIdx, 1);
+            saveSongs();
+            currentVersionIndex = 0;
+            renderSongViewer();
+        }
+
+        // Inserta HTML (no solo texto) en la posición del cursor dentro de
+        // un contenteditable, preservando la selección después de insertar.
+        function insertHtmlAtCursor(html) {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+            const fragment = range.createContextualFragment(html);
+            const lastNode = fragment.lastChild;
+            range.insertNode(fragment);
+            if (lastNode) {
+                range.setStartAfter(lastNode);
+                range.setEndAfter(lastNode);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        // ================================================================
+        //  PEGADO EXACTO (sin desacomodar nada)
+        // ================================================================
+        // Versión anterior de este archivo interceptaba el pegado
+        // (e.preventDefault()), sacaba solo el texto plano del
+        // portapapeles y lo reconstruía a mano. Eso fue lo que rompió la
+        // copia "tal cual" desde Google Docs: en algunos navegadores /
+        // móviles ese camino puede perder el cursor, insertar en el
+        // lugar equivocado, o simplemente no pegar nada.
+        //
+        // Ahora dejamos que el navegador pegue de forma NATIVA, sin
+        // tocarlo — así el texto, los espacios y los saltos de línea
+        // llegan exactamente igual a como los copiaste. Lo único que
+        // hacemos después (un instante después de que el pegado ya
+        // ocurrió) es quitar tipografía/tamaño de letra que a veces
+        // viaja pegada desde Docs o Word, porque eso sí puede desalinear
+        // visualmente los acordes sobre la letra (el editor usa fuente
+        // monoespaciada a propósito para que todo cuadre en columnas).
+        // Esta limpieza NO toca el texto, ni el orden, ni los espacios.
+        function setupEditorPasteCleanup(editorId) {
+            const editor = document.getElementById(editorId);
+            if (!editor) return;
+            editor.addEventListener('paste', function() {
+                setTimeout(() => sanitizePastedFormatting(editor), 0);
+            });
+        }
+
+        function sanitizePastedFormatting(editor) {
+            editor.querySelectorAll('[style]').forEach(el => {
+                el.style.fontFamily = '';
+                el.style.fontSize = '';
+                el.style.lineHeight = '';
+                el.style.fontStyle = '';
+                if (!el.getAttribute('style') || !el.getAttribute('style').trim()) {
+                    el.removeAttribute('style');
+                }
+            });
+            // Google Docs a veces envuelve todo en un <b id="docs-internal-guid-...">
+            // (aunque no sea texto en negritas real). Le quitamos el id para
+            // que no interfiera con nada, sin desenvolver ni reordenar su contenido.
+            editor.querySelectorAll('[id^="docs-internal-guid"]').forEach(el => el.removeAttribute('id'));
+        }
+
+        // Detección automática de acordes, pero como acción EXPLÍCITA que
+        // el usuario pide con un botón — nunca se dispara sola al pegar,
+        // precisamente para no arriesgar la fidelidad de la copia. Toma
+        // lo que sea que haya en el editor en ese momento (ya pegado tal
+        // cual, o escrito a mano) y le pinta los acordes que reconozca.
+        function runAutoDetectOnEditor(editorId) {
+            const editor = document.getElementById(editorId);
+            if (!editor) return;
+            const currentHtml = editor.innerHTML;
+            if (!currentHtml.trim() || currentHtml === '<br>') {
+                alert('Primero escribe o pega el contenido.');
+                return;
+            }
+            if (!confirm('Esto va a analizar el texto y pintar de rojo (🔴) los acordes que reconozca, reemplazando el formato actual de este cuadro de edición.\n\nEl texto y los espacios NO se alteran — solo se les agrega el color de acorde donde corresponda. Si algo queda mal marcado, lo puedes corregir a mano con los botones 🔴/⚫.\n\n¿Continuar?')) return;
+            const plainText = htmlToPlainText(currentHtml);
+            editor.innerHTML = autoDetectChords(plainText);
+        }
+
+        function setupFileImport(fileInputId, editorId) {
+            const input = document.getElementById(fileInputId);
+            if (!input) return;
+            input.addEventListener('change', function() {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const editor = document.getElementById(editorId);
+                    editor.innerHTML = autoDetectChords(evt.target.result);
+                };
+                reader.onerror = function() {
+                    alert('No se pudo leer el archivo. Asegúrate de que sea un archivo .txt.');
+                };
+                reader.readAsText(file, 'UTF-8');
+                input.value = '';
+            });
+        }
+
+        // ================================================================
+        //  MODAL CON EDITOR
+        // ================================================================
+        function openNewSongModal() {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'modalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box">
+                    <h3>➕ Añadir nueva canción</h3>
+                    <p class="modal-desc">✍️ Pega tal cual desde Google Docs, Word o donde sea — se conserva exactamente tu formato y espacios. Si quieres que la app pinte los acordes automáticamente, usa 🪄 Detectar; si prefieres marcarlos tú, selecciona el texto y usa 🔴 Acorde / ⚫ Letra. También puedes cargar un archivo .txt.</p>
+                    <div class="modal-scroll">
+                        <label>Título (incluye autor):</label>
+                        <input type="text" id="modalTitle" placeholder="Ej: Santo (Marcos Witt)">
+                        <div class="tono-row">
+                            <div>
+                                <label>Nombre de la versión (opcional):</label>
+                                <input type="text" id="modalVersion" placeholder="Ej: Estudio, En vivo, Capo 2" value="Original">
+                            </div>
+                            <div>
+                                <label>Tono original:</label>
+                                <select id="modalOriginalTono">${buildTonoOptions('C')}</select>
+                            </div>
+                        </div>
+                        <label>Contenido:</label>
+                        <div class="file-import-row">
+                            <label class="file-import-btn" for="modalFileInput">📄 Cargar archivo .txt</label>
+                            <input type="file" id="modalFileInput" accept=".txt,text/plain" style="display:none;">
+                        </div>
+                        <div class="editor-wrapper">
+                            <div class="editor-sidebar">
+                                <button class="btn-chord" onclick="markAsChord()">🔴 Acorde</button>
+                                <button class="btn-text" onclick="markAsText()">⚫ Letra</button>
+                                <button class="btn-detect" onclick="runAutoDetectOnEditor('editorContent')">🪄 Detectar</button>
+                                <button class="btn-clear" onclick="clearFormatting()">🧹 Limpiar</button>
+                            </div>
+                            <div class="editor-content" id="editorContent" contenteditable="true" spellcheck="true"></div>
+                        </div>
+                        <div id="previewContainer" style="display:none; margin-top:8px;">
+                            <label>🔍 Vista Previa:</label>
+                            <div class="preview-area" id="previewArea"></div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="btn-preview" onclick="showPreviewFromEditor()">👁️ Vista Previa</button>
+                        <button class="btn-primary" onclick="confirmNewSongFromEditor()">✅ Guardar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            setupEditorPasteCleanup('editorContent');
+            setupFileImport('modalFileInput', 'editorContent');
+            setTimeout(() => document.getElementById('modalTitle').focus(), 100);
+        }
+
+        function markAsChord() {
+            const editor = document.getElementById('editorContent');
+            const sel = window.getSelection();
+            if (!sel.rangeCount || sel.isCollapsed) {
+                alert('Selecciona primero una palabra o frase.');
+                return;
+            }
+            const range = sel.getRangeAt(0);
+            const fragment = range.extractContents();
+            const span = document.createElement('span');
+            span.className = 'chord';
+            span.appendChild(fragment);
+            range.insertNode(span);
+            sel.removeAllRanges();
+            const newRange = document.createRange();
+            newRange.setStartAfter(span);
+            newRange.collapse(true);
+            sel.addRange(newRange);
+            editor.focus();
+        }
+
+        function markAsText() {
+            const editor = document.getElementById('editorContent');
+            const sel = window.getSelection();
+            if (!sel.rangeCount || sel.isCollapsed) {
+                alert('Selecciona primero una palabra o frase.');
+                return;
+            }
+            const range = sel.getRangeAt(0);
+            const fragment = range.extractContents();
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(fragment);
+            const chords = tempDiv.querySelectorAll('.chord');
+            chords.forEach(el => {
+                const text = el.textContent;
+                el.replaceWith(text);
+            });
+            const textNode = document.createTextNode(tempDiv.textContent);
+            range.insertNode(textNode);
+            sel.removeAllRanges();
+            const newRange = document.createRange();
+            newRange.setStartAfter(textNode);
+            newRange.collapse(true);
+            sel.addRange(newRange);
+            editor.focus();
+        }
+
+        function clearFormatting() {
+            const editor = document.getElementById('editorContent');
+            const text = editor.textContent;
+            editor.innerHTML = '';
+            editor.appendChild(document.createTextNode(text));
+        }
+
+        function getEditorHTML() {
+            const editor = document.getElementById('editorContent');
+            let html = editor.innerHTML;
+            if (!html.trim() || html === '<br>') return '';
+            return sanitizeContentHtml(html);
+        }
+
+        function showPreviewFromEditor() {
+            const content = getEditorHTML();
+            if (!content) { alert('Escribe o pega el contenido primero.'); return; }
+            const container = document.getElementById('previewContainer');
+            const area = document.getElementById('previewArea');
+            container.style.display = 'block';
+            area.innerHTML = sanitizeContentHtml(content);
+        }
+
+        function confirmNewSongFromEditor() {
+            const title = document.getElementById('modalTitle').value.trim();
+            const version = document.getElementById('modalVersion').value.trim() || 'Original';
+            const originalTono = document.getElementById('modalOriginalTono').value || 'C';
+            const content = getEditorHTML();
+            if (!title) { alert('El título es obligatorio.'); return; }
+            if (!content) { alert('El contenido no puede estar vacío.'); return; }
+            const newSong = { id: Date.now(), title, versions: [{ key: version, content: sanitizeContentHtml(content), originalTono }] };
+            songs.push(newSong);
+            saveSongs();
+            closeModal();
+            selectSong(newSong.id);
+        }
+
+        function openNewVersionModal(songId) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const suggestedTono = (song.versions[0] && song.versions[0].originalTono) || 'C';
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'modalOverlay';
+            overlay.innerHTML = `
+                <div class="modal-box">
+                    <h3>➕ Añadir versión para "${escapeHtml(song.title)}"</h3>
+                    <div class="modal-scroll">
+                        <div class="tono-row">
+                            <div>
+                                <label>Nombre de la versión:</label>
+                                <input type="text" id="modalVersion" placeholder="Ej: En vivo, Capo 2">
+                            </div>
+                            <div>
+                                <label>Tono original de esta versión:</label>
+                                <select id="modalOriginalTono">${buildTonoOptions(suggestedTono)}</select>
+                            </div>
+                        </div>
+                        <label>Contenido:</label>
+                        <div class="file-import-row">
+                            <label class="file-import-btn" for="modalFileInput">📄 Cargar archivo .txt</label>
+                            <input type="file" id="modalFileInput" accept=".txt,text/plain" style="display:none;">
+                        </div>
+                        <div class="editor-wrapper">
+                            <div class="editor-sidebar">
+                                <button class="btn-chord" onclick="markAsChord()">🔴 Acorde</button>
+                                <button class="btn-text" onclick="markAsText()">⚫ Letra</button>
+                                <button class="btn-detect" onclick="runAutoDetectOnEditor('editorContent')">🪄 Detectar</button>
+                                <button class="btn-clear" onclick="clearFormatting()">🧹 Limpiar</button>
+                            </div>
+                            <div class="editor-content" id="editorContent" contenteditable="true" spellcheck="true"></div>
+                        </div>
+                        <div id="previewContainer" style="display:none; margin-top:8px;">
+                            <label>🔍 Vista Previa:</label>
+                            <div class="preview-area" id="previewArea"></div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="btn-preview" onclick="showPreviewFromEditor()">👁️ Vista Previa</button>
+                        <button class="btn-primary" onclick="confirmNewVersionFromEditor(${songId})">✅ Guardar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            setupEditorPasteCleanup('editorContent');
+            setupFileImport('modalFileInput', 'editorContent');
+            setTimeout(() => document.getElementById('modalVersion').focus(), 100);
+        }
+
+        function confirmNewVersionFromEditor(songId) {
+            const song = songs.find(s => s.id === songId);
+            if (!song) return;
+            const version = document.getElementById('modalVersion').value.trim();
+            const originalTono = document.getElementById('modalOriginalTono').value || 'C';
+            const content = getEditorHTML();
+            if (!version) { alert('El nombre de la versión es obligatorio.'); return; }
+            if (!content) { alert('El contenido no puede estar vacío.'); return; }
+            song.versions.push({ key: version, content: sanitizeContentHtml(content), originalTono });
+            saveSongs();
+            closeModal();
+            currentVersionIndex = song.versions.length - 1;
+            renderSongViewer();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modalOverlay');
+            if (modal) modal.remove();
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.remove();
+                _textInputModalCallback = null;
+            }
+        });
+
+        // ================================================================
+        //  REPRODUCTOR MÓVIL Y TRANSPOSICIÓN
+        // ================================================================
+        // ================================================================
+        //  MODO INTÉRPRETE — vista de scroll continuo con TODAS las
+        //  canciones del setlist, funciona igual en celular, tablet,
+        //  laptop y PC.
+        // ================================================================
+        let lastFocusedInterpreterSongId = null;
+
+        function openInterpreterView() {
+            document.getElementById('interpreterView').classList.add('active');
+            renderInterpreterView();
+        }
+
+        function openInterpreterForSong(songId) {
+            if (!activeSetlist.some(item => item.songId === songId)) {
+                // Todavía no está en el setlist: primero se elige el tono
+                openAddToSetlistModal(songId);
+                return;
+            }
+            openInterpreterView();
+            setTimeout(() => scrollToInterpreterSong(songId), 60);
+        }
+
+        function closeInterpreterView() {
+            document.getElementById('interpreterView').classList.remove('active');
+        }
+
+        function getInterpreterFontSize() {
+            const saved = parseFloat(localStorage.getItem(STORAGE_INTERP_FONT));
+            return (!isNaN(saved) && saved > 0) ? saved : null; // null = ajuste automático al ancho
+        }
+
+        // ---- Ajuste automático de la letra al ancho de la pantalla ----
+        // Mide cuánto ocupa cada carácter de la fuente monoespaciada y
+        // calcula el tamaño para que la línea MÁS LARGA de la canción
+        // quepa completa, sin saltar de renglón (así acordes y letra no
+        // se desalinean) y sin tener que deslizar de lado.
+        let _monoRatio = null;
+        function getMonoCharRatio() {
+            if (_monoRatio) return _monoRatio;
+            const probe = document.createElement('span');
+            probe.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font-family:'Courier New',Courier,monospace;font-size:100px;left:-9999px;top:0;";
+            probe.textContent = 'M'.repeat(50);
+            document.body.appendChild(probe);
+            const w = probe.getBoundingClientRect().width;
+            document.body.removeChild(probe);
+            _monoRatio = (w > 0) ? (w / 50 / 100) : 0.6;
+            return _monoRatio;
+        }
+
+        function fitMonoToWidth(el, minPx, maxPx) {
+            if (!el) return;
+            let maxLen = 1;
+            el.textContent.split('\n').forEach(l => {
+                const len = l.replace(/\s+$/, '').length;
+                if (len > maxLen) maxLen = len;
+            });
+            const cs = getComputedStyle(el);
+            const avail = el.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+            if (!(avail > 0)) return;
+            let size = Math.floor((avail / (maxLen * getMonoCharRatio())) * 10) / 10;
+            size = Math.max(minPx, Math.min(maxPx, size));
+            el.style.fontSize = size + 'px';
+        }
+
+        function fitInterpreterText() {
+            const manual = getInterpreterFontSize();
+            document.querySelectorAll('#interpreterScroll .interpreter-body').forEach(el => {
+                if (manual) el.style.fontSize = manual + 'px';
+                else fitMonoToWidth(el, 6, 22);
+            });
+        }
+
+        function fitViewerText() {
+            const el = document.querySelector('#songViewer .chord-lyrics');
+            if (!el) return;
+            if (window.innerWidth <= 600) fitMonoToWidth(el, 6, 18);
+            else el.style.fontSize = '';
+        }
+
+        function interpreterZoom(delta) {
+            let current = getInterpreterFontSize();
+            if (!current) {
+                const first = document.querySelector('#interpreterScroll .interpreter-body');
+                current = first ? (parseFloat(first.style.fontSize) || 12) : 12;
+            }
+            const next = Math.max(6, Math.min(30, Math.round((current + delta) * 10) / 10));
+            saveScalarToStorage(STORAGE_INTERP_FONT, next);
+            fitInterpreterText();
+        }
+
+        function interpreterAutoFit() {
+            localStorage.removeItem(STORAGE_INTERP_FONT);
+            fitInterpreterText();
+        }
+
+        function renderInterpreterView() {
+            const container = document.getElementById('interpreterScroll');
+            if (!container) return;
+            if (!activeSetlist.length) {
+                container.innerHTML = '<div class="interpreter-empty">Tu setlist está vacío.<br>Añade canciones desde la biblioteca con "+ Añadir al Setlist".</div>';
+                return;
+            }
+            let html = '';
+            activeSetlist.forEach(entry => {
+                const song = songs.find(s => s.id === entry.songId);
+                if (!song) return;
+                const requestedIndex = Number.isInteger(entry.versionIndex) ? entry.versionIndex : 0;
+                const version = song.versions[requestedIndex] || song.versions[0];
+                const originalTono = (version && version.originalTono) || 'C';
+                const tono = entry.tonoAsignado || originalTono;
+                let content = (version && version.content) || '';
+                let semitones = 0;
+                if (tono !== originalTono) {
+                    const origIdx = tonoRootIndex(originalTono);
+                    const destIdx = tonoRootIndex(tono);
+                    if (origIdx !== -1 && destIdx !== -1) semitones = (destIdx - origIdx + 12) % 12;
+                }
+                content = getDisplayContent(content, semitones);
+                html += `
+                    <div class="interpreter-song" id="interp-song-${song.id}">
+                        <div class="interpreter-song-header">
+                            <h2>${escapeHtml(song.title)}</h2>
+                            <select onchange="changeInterpreterTono(${song.id}, this.value)">${buildTonoOptions(tono)}</select>
+                        </div>
+                        <div class="interpreter-body">${content}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            fitInterpreterText();
+        }
+
+        function changeInterpreterTono(songId, newTono) {
+            const entry = activeSetlist.find(item => item.songId === songId);
+            if (!entry) return;
+            entry.tonoAsignado = newTono;
+            saveActiveSetlist();
+            renderInterpreterView();
+            renderList();
+            renderSetlistDrawer();
+            if (currentSongId === songId) renderSongViewer();
+        }
+
+        function scrollToInterpreterSong(songId) {
+            lastFocusedInterpreterSongId = songId;
+            const el = document.getElementById('interp-song-' + songId);
+            const scrollArea = document.getElementById('interpreterScroll');
+            if (el && scrollArea) {
+                scrollArea.scrollTo({ top: el.offsetTop - 10, behavior: 'smooth' });
+            }
+            renderSetlistDrawer();
+        }
+
+        function interpreterNext() {
+            if (!activeSetlist.length) return;
+            const idx = activeSetlist.findIndex(item => item.songId === lastFocusedInterpreterSongId);
+            const newIdx = idx === -1 ? 0 : (idx + 1) % activeSetlist.length;
+            scrollToInterpreterSong(activeSetlist[newIdx].songId);
+        }
+
+        function interpreterPrev() {
+            if (!activeSetlist.length) return;
+            const idx = activeSetlist.findIndex(item => item.songId === lastFocusedInterpreterSongId);
+            const newIdx = idx === -1 ? 0 : (idx - 1 + activeSetlist.length) % activeSetlist.length;
+            scrollToInterpreterSong(activeSetlist[newIdx].songId);
+        }
+
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+        // Equivalencia enarmónica correcta para bemoles. OJO: el bug real
+        // de la transposición estaba aquí. El código anterior hacía
+        // note.replace('b','#') asumiendo que "Bb" = "B#", "Eb" = "E#",
+        // etc. — eso es incorrecto (Bb sí es A#, pero E# ni siquiera
+        // existe como nombre en NOTE_NAMES, así que getNoteIndex
+        // devolvía -1 y la transposición se abortaba en silencio para
+        // cualquier acorde con bemol). Esta tabla mapea cada bemol a su
+        // equivalente real en semitonos.
+        const FLAT_TO_SHARP = { 'Cb': 'B', 'Db': 'C#', 'Eb': 'D#', 'Fb': 'E', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+
+        function getNoteIndex(note) {
+            if (!note) return -1;
+            if (FLAT_TO_SHARP[note]) return NOTE_NAMES.indexOf(FLAT_TO_SHARP[note]);
+            return NOTE_NAMES.indexOf(note);
+        }
+
+        function transposeChord(chord, semitones) {
+            if (!chord) return chord;
+            // Notación compuesta con guion, ej. "Bm7-A" (cambio rápido de
+            // acorde dentro del mismo tiempo): se transpone cada segmento
+            // por separado y se reconstruye con los mismos guiones.
+            if (chord.includes('-')) {
+                return chord.split('-').map(seg => transposeSingleChord(seg, semitones)).join('-');
+            }
+            return transposeSingleChord(chord, semitones);
+        }
+
+        function transposeSingleChord(chord, semitones) {
+            if (!chord) return chord;
+            let parts = chord.split('/');
+            let rootPart = parts[0];
+            let bassPart = parts.length > 1 ? parts[1] : null;
+            let root = rootPart.match(/^[A-G][b#]?/);
+            if (!root) return chord;
+            let rootStr = root[0];
+            let suffix = rootPart.substring(rootStr.length);
+            let idx = getNoteIndex(rootStr);
+            if (idx === -1) return chord;
+            let newIdx = (idx + semitones + 12) % 12;
+            let newRoot = NOTE_NAMES[newIdx];
+            let newBass = null;
+            if (bassPart) {
+                let bassRoot = bassPart.match(/^[A-G][b#]?/);
+                if (bassRoot) {
+                    let bIdx = getNoteIndex(bassRoot[0]);
+                    if (bIdx !== -1) {
+                        let newBIdx = (bIdx + semitones + 12) % 12;
+                        newBass = NOTE_NAMES[newBIdx] + bassPart.substring(bassRoot[0].length);
+                    }
+                }
+            }
+            let result = newRoot + suffix;
+            if (newBass) result += '/' + newBass;
+            return result;
+        }
+
+        // Detecta cualquier variante razonable de <span class="chord">:
+        // comillas simples o dobles, atributos extra (style, data-*, etc.),
+        // o "chord" combinado con otras clases. Esto evita que restos de
+        // versiones anteriores del cancionero (con un formato ligeramente
+        // distinto) queden invisibles para la transposición.
+        const CHORD_SPAN_REGEX = /(<span\b[^>]*\bclass\s*=\s*(?:"[^"]*\bchord\b[^"]*"|'[^']*\bchord\b[^']*')[^>]*>)([\s\S]*?)(<\/span>)/gi;
+
+        function countChordSpans(htmlContent) {
+            if (!htmlContent) return 0;
+            const matches = htmlContent.match(CHORD_SPAN_REGEX);
+            return matches ? matches.length : 0;
+        }
+
+        // Transpone TODO acorde reconocible dentro de cada span de acorde,
+        // ya sea que hayas marcado un solo acorde o una línea entera de una
+        // vez (varios acordes separados por espacios dentro del mismo span).
+        // Los espacios internos se preservan exactamente.
+        function transposeChordInText(htmlContent, semitones) {
+            if (!semitones) return htmlContent;
+            return htmlContent.replace(CHORD_SPAN_REGEX, (match, openTag, inner, closeTag) => {
+                const transposedInner = inner.split(/(\s+)/).map(tok => {
+                    if (!tok.trim()) return tok; // espacio en blanco: se conserva tal cual
+                    return transposeChord(tok, semitones);
+                }).join('');
+                return openTag + transposedInner + closeTag;
+            });
+        }
+
+        // Punto único que decide cómo mostrar/transponer una versión:
+        // - Si ya tiene acordes marcados (a mano o por auto-detección
+        //   previa), respeta esas marcas tal cual y transpone solo eso.
+        // - Si NO hay nada marcado (texto pegado tal cual, sin colorear
+        //   nada), la app igual reconoce los acordes por su forma y los
+        //   transpone — nunca hace falta marcar nada para que esto funcione.
+        function getDisplayContent(rawContent, semitones) {
+            if (countChordSpans(rawContent) > 0) {
+                return semitones ? transposeChordInText(rawContent, semitones) : rawContent;
+            }
+            const plainText = htmlToPlainText(rawContent);
+            return detectAndTransposeChords(plainText, semitones || 0);
+        }
+
+        function updatePlayerSetlist() {
+            renderSetlistDrawer();
+            const view = document.getElementById('interpreterView');
+            if (view && view.classList.contains('active')) {
+                renderInterpreterView();
+            }
+        }
+
+        // ================================================================
+        //  SETLIST DRAWER (lista lateral, disponible en cualquier pantalla)
+        // ================================================================
+        function toggleSetlistDrawer() {
+            document.getElementById('mobileSetlistDrawer').classList.toggle('open');
+        }
+
+        function renderSetlistDrawer() {
+            const container = document.getElementById('drawerList');
+            if (!activeSetlist.length) {
+                container.innerHTML = '<span class="text-muted">Vacío</span>';
+                return;
+            }
+            let html = '';
+            activeSetlist.forEach((item, idx) => {
+                const song = songs.find(s => s.id === item.songId);
+                if (!song) return;
+                const active = (lastFocusedInterpreterSongId === item.songId) ? 'active' : '';
+                const tono = item.tonoAsignado ? `(${item.tonoAsignado})` : '';
+                html += `
+                    <div class="drawer-item ${active}" onclick="scrollToInterpreterSong(${item.songId}); toggleSetlistDrawer();">
+                        <span>${escapeHtml(song.title)} <span class="tono">${escapeHtml(tono)}</span></span>
+                        <span>
+                            <button onclick="event.stopPropagation(); reorderSetlist(${idx}, ${Math.max(0,idx-1)})" style="background:none;border:none;cursor:pointer;">⬆</button>
+                            <button onclick="event.stopPropagation(); reorderSetlist(${idx}, ${Math.min(activeSetlist.length-1,idx+1)})" style="background:none;border:none;cursor:pointer;">⬇</button>
+                            <button onclick="event.stopPropagation(); removeFromSetlist(${item.songId});" style="background:none;border:none;cursor:pointer;color:var(--accent);">✕</button>
+                        </span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ================================================================
+        //  TUTOR
+        // ================================================================
+        function importTutorJson() {
+            const input = document.getElementById('tutorJsonInput').value.trim();
+            if (!input) return;
+            try {
+                const data = JSON.parse(input);
+                if (Array.isArray(data.preguntas)) {
+                    tutorData = normalizeTutorData(data.preguntas);
+                    if (!tutorData.length) throw new Error('No hay preguntas válidas.');
+                    saveTutor();
+                    document.getElementById('tutorImportStatus').textContent = `✅ Importadas ${tutorData.length} preguntas.`;
+                } else {
+                    document.getElementById('tutorImportStatus').textContent = '❌ Formato inválido.';
+                }
+            } catch (e) {
+                document.getElementById('tutorImportStatus').textContent = '❌ Error: ' + e.message;
+            }
+        }
+
+        function askTutor() {
+            const query = document.getElementById('tutorQuery').value.trim().toLowerCase();
+            if (!query) return;
+            const result = document.getElementById('tutorResult');
+            const words = query.split(/\s+/);
+            let best = null, bestScore = 0;
+            for (let item of tutorData) {
+                const q = item.pregunta.toLowerCase();
+                let score = words.filter(w => q.includes(w)).length;
+                if (score > bestScore) { bestScore = score; best = item; }
+            }
+            if (best && bestScore > 0) {
+                result.innerHTML = `<div class="q">❓ ${escapeHtml(best.pregunta)}</div><div class="a">${escapeHtml(best.respuesta)}</div>`;
+            } else {
+                result.innerHTML = `
+                    <span class="text-muted">No encontré respuesta. Consulta a Gemini:</span>
+                    <br><br>
+                    <button class="btn btn-outline" onclick="window.open('https://gemini.google.com/','_blank')">Abrir Gemini</button>
+                `;
+            }
+        }
+
+        // ================================================================
+        //  SIDEBAR (móvil)
+        // ================================================================
+        function toggleSidebar(open) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (open === undefined) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('active');
+            } else if (open) {
+                sidebar.classList.add('open');
+                overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 600) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== overlay) {
+                    toggleSidebar(false);
+                }
+            }
+        });
+
+        // ================================================================
+        //  INICIALIZACIÓN
+        // ================================================================
+        loadData();
+        renderList();
+        renderSetlistDrawer();
+        updatePlayerSetlist();
+        if (currentSongId) selectSong(currentSongId);
+        else showPlaceholder();
+
+        if (window.innerWidth <= 600) {
+            document.getElementById('mobileOpenSidebarBtn').style.display = 'inline-block';
+        }
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 600) {
+                toggleSidebar(false);
+                document.getElementById('mobileOpenSidebarBtn').style.display = 'none';
+            } else {
+                document.getElementById('mobileOpenSidebarBtn').style.display = 'inline-block';
+            }
+            fitInterpreterText();
+            fitViewerText();
+        });
+
+        let touchStartX = 0;
+        document.addEventListener('touchstart', function(e) {
+            const view = document.getElementById('interpreterView');
+            if (!view.classList.contains('active')) return;
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener('touchend', function(e) {
+            const view = document.getElementById('interpreterView');
+            if (!view.classList.contains('active')) return;
+            const diff = touchStartX - e.changedTouches[0].screenX;
+            if (Math.abs(diff) > 80) {
+                if (diff > 0) interpreterNext();
+                else interpreterPrev();
+            }
+        }, { passive: true });
+
+        console.log('🎵 Cancionero listo y transpuesto.');
+
+        // ================================================================
+        //  PWA: registrar el service worker (permite instalar la app y
+        //  usarla sin internet). Solo funciona en https:// — si abres el
+        //  archivo directo desde tu computadora (file://), el navegador
+        //  bloquea esto por seguridad; una vez subido a Netlify, funciona.
+        // ================================================================
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').catch(function(err) {
+                    console.log('No se pudo registrar el service worker:', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

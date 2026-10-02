@@ -1,0 +1,10 @@
+{
+  "name": "Mis Alabanzas",
+  "short_name": "Alabanzas",
+  "lang": "es",
+  "start_url": "./cancionero-corregido.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#243447",
+  "description": "Cancionero web personal con setlists y modo intérprete"
+}
